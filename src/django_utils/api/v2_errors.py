@@ -11,12 +11,14 @@ Usage in modules:
     from django_utils.api.v2_errors import raise_pydantic_as_drf
 
 Usage in service settings:
-    "EXCEPTION_HANDLER": "main.v2_errors.volkanos_exception_handler"
+    "EXCEPTION_HANDLER": "main.v2_errors.service_exception_handler"
 
 Service main/v2_errors.py:
-    from django_contentdb.utils import standard_exception_handler
     from django_utils.api.v2_errors import make_exception_handler
-    volkanos_exception_handler = make_exception_handler(v1_handler=standard_exception_handler)
+    service_exception_handler = make_exception_handler()
+
+Pass v1_handler= only when the service really installs its own handler for v1 paths;
+with none, DRF's own handler serves them. See make_exception_handler.
 """
 
 import logging
@@ -169,9 +171,13 @@ def make_exception_handler(v1_handler=None):
     """Factory: returns a DRF exception handler that routes v1/v2 based on URL path.
 
     Usage in service main/v2_errors.py:
-        from django_contentdb.utils import standard_exception_handler
         from django_utils.api.v2_errors import make_exception_handler
-        volkanos_exception_handler = make_exception_handler(v1_handler=standard_exception_handler)
+        service_exception_handler = make_exception_handler()
+
+    Pass v1_handler only when the service installs a handler for its v1 paths. If the
+    module providing that handler is optional, import it defensively: DRF resolves
+    EXCEPTION_HANDLER lazily, at the first error, so an ImportError here does not fail
+    at startup -- it turns every error response in the API into a bare 500.
     """
 
     def handler(exc, context):
