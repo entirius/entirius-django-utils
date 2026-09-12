@@ -2,10 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-"""Volkanos API v2 error handling.
+"""API v2 error handling.
 
 All v2 error formatting lives here. The service's main/v2_errors.py becomes
-a 3-line config that wires up the v1 fallback handler.
+a two-line config that builds the handler.
 
 Usage in modules:
     from django_utils.api.v2_errors import raise_pydantic_as_drf
