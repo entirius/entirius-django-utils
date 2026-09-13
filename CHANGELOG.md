@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.0 — unreleased
+
+- `django_utils.toolbox`: the AI toolbox client every Volkanos instance carries. `ToolboxClient` with
+  `complete(CompletionRequest) -> CompletionResponse` (exactly one HTTP attempt — paid and non-idempotent,
+  local validation of tags/temperature/max_tokens before any network call) and `list_models()`
+  (plain list, retried with backoff); typed errors (`ToolboxNotConfiguredError`, `ToolboxBudgetExceededError`,
+  `ToolboxModelNotAllowedError`, `ToolboxValidationError` with `code` and `field_errors`, …);
+  `handle_toolbox_error` for DRF views; `status()` (`configured | unconfigured | unreachable`, cached 60 s);
+  `testing.mock_toolbox` respx helper. Moved from `entirius-django-utils-translator`, which now subclasses it.
+- New settings, read lazily: `AI_TOOLBOX_BASE_URL`, `AI_TOOLBOX_API_KEY`, `AI_TOOLBOX_CHANNEL`,
+  `AI_TOOLBOX_TIMEOUT`, `AI_COMPLETION_TIMEOUT`, `AI_TOOLBOX_MAX_RETRIES`.
+- Dependencies: `httpx>=0.27`; `respx>=0.21` in the `test` extra.
+
 ## 2.0.1 — 2026-09-12
 
 - `api.v2_errors` docs: the usage examples no longer import `standard_exception_handler` from
