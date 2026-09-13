@@ -19,6 +19,7 @@ from django_utils.toolbox.errors import (
     ToolboxRateLimitError,
     ToolboxTimeoutError,
     ToolboxValidationError,
+    parse_retry_after,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,8 +61,9 @@ def _rate_limit_error(exc: ToolboxRateLimitError) -> Response:
     else:
         http_status, code = status.HTTP_503_SERVICE_UNAVAILABLE, "UPSTREAM_RATE_LIMITED"
     response = _error(http_status, code, "AI service is rate limited.")
-    if exc.retry_after is not None:
-        response["Retry-After"] = str(int(exc.retry_after))
+    retry_after = parse_retry_after(exc.retry_after)
+    if retry_after is not None:
+        response["Retry-After"] = str(int(retry_after))
     return response
 
 

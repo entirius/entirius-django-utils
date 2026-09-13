@@ -20,6 +20,7 @@ from django_utils.toolbox import (
     ToolboxBudgetExceededError,
     ToolboxClient,
     ToolboxConnectionError,
+    ToolboxError,
     ToolboxModelNotAllowedError,
     ToolboxNotConfiguredError,
     ToolboxRateLimitError,
@@ -228,3 +229,87 @@ def test_non_dict_field_errors_ignored(router):
         client.complete(make_request())
 
     assert exc_info.value.field_errors == {}
+
+
+def test_schema_invalid_message_not_echoed(router):
+    model_output = '\'name\' is a required property in {"secret": "model output"}'
+    router["complete"].mock(return_value=error_response(422, "SCHEMA_INVALID", model_output))
+
+    with ToolboxClient() as client, pytest.raises(ToolboxValidationError) as exc_info:
+        client.complete(make_request())
+
+    assert model_output not in str(exc_info.value)
+    assert model_output not in exc_info.value.message
+    assert "SCHEMA_INVALID" in str(exc_info.value)
+    assert exc_info.value.upstream_message == model_output
+
+
+@pytest.mark.parametrize("value", ["-5", "nan", "inf", "301", "soon"])
+def test_retry_after_negative_nan_inf_ignored(router, monkeypatch, value):
+    delays: list[float] = []
+    monkeypatch.setattr("django_utils.toolbox.client.time.sleep", delays.append)
+    limited = httpx.Response(429, json={"error": "RATE_LIMIT_EXCEEDED"}, headers={"Retry-After": value})
+    router["models"].mock(side_effect=[limited, httpx.Response(200, json=[])])
+
+    with ToolboxClient() as client:
+        assert client.list_models() == []
+
+    assert delays == [2.0]
+
+
+def test_get_retried_on_502(router, no_sleep):
+    router["models"].mock(side_effect=[error_response(502, "PROVIDER_ERROR"), httpx.Response(200, json=[])])
+
+    with ToolboxClient() as client:
+        assert client.list_models() == []
+
+    assert router["models"].call_count == 2
+
+
+JOBS_URL = "https://toolbox.test.internal/api/ai-translator/v2/admin/zeno-test/jobs/"
+
+
+@pytest.mark.parametrize("failure", [httpx.ReadTimeout("slow"), httpx.RemoteProtocolError("dropped")])
+def test_non_idempotent_post_not_retried_after_send(router, no_sleep, failure):
+    route = router.post(JOBS_URL).mock(side_effect=[failure, httpx.Response(202, json={})])
+
+    with ToolboxClient() as client, pytest.raises((ToolboxTimeoutError, ToolboxConnectionError)):
+        client._post(JOBS_URL, {}, retry=False)
+
+    assert route.call_count == 1
+
+
+@pytest.mark.parametrize("status_code", [500, 502, 503, 504])
+def test_non_idempotent_post_not_retried_on_5xx(router, no_sleep, status_code):
+    route = router.post(JOBS_URL).mock(side_effect=[error_response(status_code, "X"), httpx.Response(202, json={})])
+
+    with ToolboxClient() as client, pytest.raises(ToolboxError):
+        client._post(JOBS_URL, {}, retry=False)
+
+    assert route.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        httpx.ConnectError("refused"),
+        httpx.Response(429, json={"error": "RATE_LIMIT_EXCEEDED"}, headers={"Retry-After": "1"}),
+    ],
+)
+def test_non_idempotent_post_retried_before_send_or_on_429(router, no_sleep, failure):
+    route = router.post(JOBS_URL).mock(side_effect=[failure, httpx.Response(202, json={"job_id": "j"})])
+
+    with ToolboxClient() as client:
+        assert client._post(JOBS_URL, {}, retry=False) == {"job_id": "j"}
+
+    assert route.call_count == 2
+
+
+def test_non_idempotent_post_429_without_retry_after_not_retried(router, no_sleep):
+    limited = httpx.Response(429, json={"error": "RATE_LIMIT_EXCEEDED"}, headers={"Retry-After": "nan"})
+    route = router.post(JOBS_URL).mock(side_effect=[limited, httpx.Response(202, json={})])
+
+    with ToolboxClient() as client, pytest.raises(ToolboxRateLimitError):
+        client._post(JOBS_URL, {}, retry=False)
+
+    assert route.call_count == 1

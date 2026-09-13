@@ -75,3 +75,11 @@ def test_rate_limit_sets_retry_after_header():
     response = handle_toolbox_error(ToolboxRateLimitError(429, "slow down", retry_after=30.0))
 
     assert response["Retry-After"] == "30"
+
+
+@pytest.mark.parametrize("retry_after", [-5.0, float("nan"), float("inf"), 1e30, "soon"])
+def test_handle_error_with_invalid_retry_after_does_not_crash(retry_after):
+    response = handle_toolbox_error(ToolboxRateLimitError(429, "slow down", retry_after=retry_after))
+
+    assert response.status_code == 429
+    assert "Retry-After" not in response
