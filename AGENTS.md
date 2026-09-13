@@ -54,6 +54,10 @@ Read from `django.conf.settings` on every access (`override_settings` works).
 | `AI_COMPLETION_TIMEOUT` | `130.0` | `complete()` — above the server's 120 s cap, so 504 arrives typed |
 | `AI_TOOLBOX_MAX_RETRIES` | `3` | total attempts for retriable calls; never applies to `complete()` |
 
+Retries: GET and `_post(retry=True)` retry 408/429/5xx/transport errors; `_post(retry=False)` (paid POSTs such as
+the translator's `create_job`) retries only a connection refusal and a 429 with a valid `Retry-After` — the toolbox
+has no `Idempotency-Key`. `Retry-After` outside a finite [0, 300] is ignored (`parse_retry_after`).
+
 ## Toolbox error mapping
 
 | Toolbox response | Exception | `handle_toolbox_error` |
@@ -73,3 +77,5 @@ Read from `django.conf.settings` on every access (`override_settings` works).
 - `django_utils.toolbox.status` is the re-exported function, not the module — patch through the module
   object (`from django_utils.toolbox.status import CACHE_KEY` still works).
 - Never log request bodies or the key: the httpx event hook logs method, URL and redacted headers at DEBUG.
+- Response-mapped errors carry `default_message` of their class; the toolbox text is on `upstream_message`
+  (may quote model output) — never log it, never put it in a response.

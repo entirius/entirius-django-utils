@@ -12,6 +12,13 @@
 - New settings, read lazily: `AI_TOOLBOX_BASE_URL`, `AI_TOOLBOX_API_KEY`, `AI_TOOLBOX_CHANNEL`,
   `AI_TOOLBOX_TIMEOUT`, `AI_COMPLETION_TIMEOUT`, `AI_TOOLBOX_MAX_RETRIES`.
 - Dependencies: `httpx>=0.27`; `respx>=0.21` in the `test` extra.
+- `_post(url, payload, retry=False)` for paid, non-idempotent calls: re-sent only after a connection refusal
+  (the request never left) or a 429 with a valid `Retry-After` — never after a timeout, a dropped connection
+  or a 5xx. GET calls keep the full retry policy.
+- `Retry-After` counts only as a finite number in [0, 300] (`parse_retry_after`); anything else falls back to
+  backoff, and `handle_toolbox_error` sets the header only for a valid value.
+- Errors mapped from a toolbox response carry a fixed message per class (`str(exc)` adds the upstream `error`
+  code); the toolbox's own text is kept on `upstream_message`, never logged or rendered.
 
 ## 2.0.1 — 2026-09-12
 
