@@ -39,7 +39,8 @@ Utility library — no concrete models, no migrations (abstract bases only).
   `client.py` (`ToolboxClient`: `complete()` single attempt, `list_models()` with retry, `_url(tool, path)`,
   `_get`/`_post`/`_request` for subclasses such as the translator), `errors.py` (typed errors +
   `error_from_response`), `schemas.py` (Pydantic contract), `status.py` (`status()` for UIs),
-  `views.py` (`handle_toolbox_error`), `settings.py` (lazy), `testing.py` (respx `mock_toolbox`).
+  `views.py` (`handle_toolbox_error`), `settings.py` (lazy), `testing.py` (respx `mock_toolbox`),
+  `outage.py` (dev/test-only outage switch).
 
 ## Toolbox client
 
