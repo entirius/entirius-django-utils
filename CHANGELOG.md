@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.0 — unreleased
+## 2.1.0 — 2026-09-15
 
 - `django_utils.toolbox`: the AI toolbox client every Volkanos instance carries. `ToolboxClient` with
   `complete(CompletionRequest) -> CompletionResponse` (exactly one HTTP attempt — paid and non-idempotent,
