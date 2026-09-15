@@ -120,6 +120,15 @@ def _build_validation_details(detail: dict | list | str) -> list[ErrorDetail]:
     return details
 
 
+def _conflict_parts(exc: drf_exceptions.APIException) -> tuple[str, str, list[ErrorDetail]]:
+    """A 409 keeps what the exception carries: its code as `error`, its detail as message or field details."""
+    detail = exc.detail
+    if isinstance(detail, dict | list):
+        return "CONFLICT", "The request conflicts with the current state.", _build_validation_details(detail)
+    code = str(getattr(detail, "code", "") or "conflict").upper()
+    return code, str(detail) or "An error occurred.", []
+
+
 # --- Exception Handlers ---
 
 
@@ -138,6 +147,8 @@ def v2_exception_handler(exc, context):
         details = []
         if isinstance(exc, drf_exceptions.ValidationError):
             details = _build_validation_details(handled.data)
+        elif status_code == 409 and isinstance(exc, drf_exceptions.APIException):
+            error_code, message, details = _conflict_parts(exc)
 
         error_response = ErrorResponse(error=error_code, message=message, debug_id=debug_id, details=details)
 
