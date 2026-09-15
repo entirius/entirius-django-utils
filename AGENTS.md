@@ -35,3 +35,23 @@ Utility library — no concrete models, no migrations (abstract bases only).
 - `json/` — JSON encoder.
 - `settings.py` — optional host-project settings with defaults (`MEDIA_URL`, `HEADER_IP_ADDRESS`,
   `HEADER_COUNTRY`, `LOG_HTTP_CODE_GTE`, `ADMIN_THEME`).
+- `toolbox/` — AI toolbox client (transport only: no prompts, no models, no Celery):
+  `client.py` (`ToolboxClient`: `complete()` single attempt, `list_models()` with retry, `_url(tool, path)`,
+  `_get`/`_post`/`_request` for subclasses such as the translator), `errors.py` (typed errors +
+  `error_from_response`), `schemas.py` (Pydantic contract), `status.py` (`status()` for UIs),
+  `views.py` (`handle_toolbox_error`), `settings.py` (lazy), `testing.py` (respx `mock_toolbox`).
+
+## Toolbox client
+
+`docs/toolbox-client.md` is the only reference for the toolbox settings (`AI_TOOLBOX_BASE_URL`,
+`AI_TOOLBOX_API_KEY`, `AI_TOOLBOX_CHANNEL`, timeouts, retries), the retry policy, the error mapping
+(`ToolboxConnectionError`, `ToolboxBudgetExceededError`, … → `handle_toolbox_error`), `status()` and
+`testing.mock_toolbox`. Update it together with any change under `toolbox/`.
+
+## Gotchas
+
+- `django_utils.toolbox.status` is the re-exported function, not the module — patch through the module
+  object (`from django_utils.toolbox.status import CACHE_KEY` still works).
+- Never log request bodies or the key: the httpx event hook logs method, URL and redacted headers at DEBUG.
+- Response-mapped errors carry `default_message` of their class; the toolbox text is on `upstream_message`
+  (may quote model output) — never log it, never put it in a response.
