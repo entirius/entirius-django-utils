@@ -20,6 +20,10 @@
 - Errors mapped from a toolbox response carry a fixed message per class (`str(exc)` adds the upstream `error`
   code); the toolbox's own text is kept on `upstream_message`, never logged or rendered.
 - Docs: `docs/toolbox-client.md` — settings, usage, retries, error mapping, status, test helpers.
+- `api.v2_errors`: a 409 keeps what the exception carries — its code upper-cased as `error`
+  (`Conflict("…", code="already_reviewed")` → `ALREADY_REVIEWED`), its text as `message`, a dict/list detail
+  as field `details` (`error: CONFLICT`). Before, every 409 answered `INVALID_REQUEST` / "An error occurred.",
+  so clients could not tell conflict kinds apart. Other statuses keep their generic messages.
 
 ## 2.0.1 — 2026-09-12
 

@@ -5,7 +5,7 @@
 """make_exception_handler routing, including the no-v1-handler default."""
 
 import pytest
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import APIException, NotFound
 from rest_framework.test import APIRequestFactory
 
 from django_utils.api.v2_errors import make_exception_handler
@@ -35,3 +35,42 @@ def test_v1_handler_is_used_when_one_is_supplied():
     handler = make_exception_handler(v1_handler=lambda exc, ctx: sentinel)
 
     assert handler(NotFound(), _context("/api/thing/v1/x/")) is sentinel
+
+
+class _Conflict(APIException):
+    status_code = 409
+    default_detail = "The request conflicts with the current state."
+    default_code = "conflict"
+
+
+def _v2(exc):
+    return make_exception_handler()(exc, _context("/api/thing/v2/x/"))
+
+
+def test_item11_conflict_keeps_code_and_message():
+    response = _v2(_Conflict("message already reviewed", code="already_reviewed"))
+
+    assert response.status_code == 409
+    assert response.data["error"] == "ALREADY_REVIEWED"
+    assert response.data["message"] == "message already reviewed"
+
+
+def test_item11_conflict_without_detail_uses_the_class_default():
+    response = _v2(_Conflict())
+
+    assert response.data["error"] == "CONFLICT"
+    assert response.data["message"] == "The request conflicts with the current state."
+
+
+def test_item11_conflict_keeps_field_details():
+    response = _v2(_Conflict({"domain": ["already exists"]}))
+
+    assert response.data["error"] == "CONFLICT"
+    assert response.data["details"][0]["field"] == "domain"
+    assert response.data["details"][0]["description"] == "already exists"
+
+
+def test_item11_other_statuses_keep_the_generic_message():
+    response = _v2(NotFound("secret row 42"))
+
+    assert response.data["message"] == "The requested resource was not found."
