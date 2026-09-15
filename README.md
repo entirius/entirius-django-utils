@@ -53,6 +53,8 @@ decision. `list_models()` retries on 5xx with backoff. Store responses with `mod
 (`cost` is a `Decimal`). In tests, `django_utils.toolbox.testing.mock_toolbox()` (needs the `test` extra)
 mocks both endpoints with canned answers; `error_response(402, "BUDGET_EXCEEDED")` builds error bodies.
 
+Full reference — settings, retries, error mapping: [docs/toolbox-client.md](docs/toolbox-client.md).
+
 ## Development
 
 ```shell

@@ -19,6 +19,7 @@
   backoff, and `handle_toolbox_error` sets the header only for a valid value.
 - Errors mapped from a toolbox response carry a fixed message per class (`str(exc)` adds the upstream `error`
   code); the toolbox's own text is kept on `upstream_message`, never logged or rendered.
+- Docs: `docs/toolbox-client.md` — settings, usage, retries, error mapping, status, test helpers.
 
 ## 2.0.1 — 2026-09-12
 
