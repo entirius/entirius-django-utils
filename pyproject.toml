@@ -1,6 +1,6 @@
 [project]
 name = "entirius-django-utils"
-version = "2.1.0"
+version = "2.2.0"
 description = "Shared Django utilities for Volkanos services - base models, DRF API helpers, admin and text tools"
 authors = [{ name = "Entirius" }]
 readme = "README.md"

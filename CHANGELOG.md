@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0 — 2026-09-16
+
+- `django_utils.toolbox.outage`: dev/test-only outage switch — while on, every toolbox request fails as a refused
+  connection (`ToolboxConnectionError`) without touching the network, and `status()` reads `unreachable`.
+  Exists only with `DEBUG` or the new setting `AI_TOOLBOX_TEST_SWITCH = True`, never with
+  `ENVIRONMENT == "production"`; the flag lives in the Django cache and expires after 15 min.
+
 ## 2.1.0 — 2026-09-15
 
 - `django_utils.toolbox`: the AI toolbox client every Volkanos instance carries. `ToolboxClient` with

@@ -25,6 +25,7 @@ DEFAULTS: dict[str, Any] = {
     "AI_TOOLBOX_TIMEOUT": 60.0,
     "AI_COMPLETION_TIMEOUT": 130.0,
     "AI_TOOLBOX_MAX_RETRIES": 3,
+    "AI_TOOLBOX_TEST_SWITCH": False,
 }
 
 
