@@ -21,6 +21,7 @@ empty the instance runs without the toolbox: `ToolboxClient()` raises `ToolboxNo
 | `AI_TOOLBOX_TIMEOUT` | `60.0` | seconds, `list_models()` and subclass calls |
 | `AI_COMPLETION_TIMEOUT` | `130.0` | seconds, `complete()` — above the toolbox's 120 s cap, so an upstream timeout arrives as a typed 504 |
 | `AI_TOOLBOX_MAX_RETRIES` | `3` | attempts in total for retriable calls; never applies to `complete()` |
+| `AI_TOOLBOX_TEST_SWITCH` | `False` | enables the outage switch without `DEBUG` (dev/test stacks only, see below) |
 
 ```python
 # service settings_local.py
@@ -114,6 +115,23 @@ The attribute `django_utils.toolbox.status` is the re-exported function, not the
 object from `sys.modules` (or `importlib.import_module`) instead; `from django_utils.toolbox.status import
 CACHE_KEY` still works.
 
+## Outage switch (dev/test only)
+
+`django_utils.toolbox.outage` simulates "toolbox down" without stopping the toolbox: while it is on, every
+request of every `ToolboxClient` fails as `ToolboxConnectionError` (status `0`, `request_sent = False`) before
+any network call, so `status()` reads `unreachable` too.
+
+| Function | Meaning |
+|---|---|
+| `allowed()` | `DEBUG` or `AI_TOOLBOX_TEST_SWITCH = True`, and never `ENVIRONMENT == "production"` |
+| `is_down()` | the switch is allowed and on; a failing cache reads as off, never raises |
+| `set_down(True \| False)` | turn it on (expires after `OUTAGE_TTL_S` = 900 s) or off; drops the cached `status()` probe; raises `OutageSwitchDisabledError` when not allowed |
+
+The flag lives in the Django cache (`django_utils.toolbox.outage`), so a service and its workers share it only
+on a shared cache backend (Redis). A stored flag is ignored while the switch is not allowed. Utils ships no
+endpoint: a host module exposes it behind its own development gate — communicator
+`POST test/toolbox-outage/`.
+
 ## Logging
 
 - Importing the client sets the `httpx` logger to `WARNING`, process-wide, so request lines never reach
@@ -137,4 +155,4 @@ def test_budget(settings):
 
 `mock_toolbox()` mocks the configured base URL and channel: route `complete` answers `CANNED_COMPLETION`,
 route `models` answers `CANNED_MODELS` (one `fake-chat` model). Unused routes do not fail the test.
-The suite of this package: `tests/toolbox/` (`test_client`, `test_views`, `test_status`, `test_logging`).
+The suite of this package: `tests/toolbox/` (`test_client`, `test_views`, `test_status`, `test_logging`, `test_outage`).

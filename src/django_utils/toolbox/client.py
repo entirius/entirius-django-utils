@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
+from django_utils.toolbox import outage
 from django_utils.toolbox import settings as toolbox_settings
 from django_utils.toolbox.errors import (
     ToolboxConnectionError,
@@ -120,6 +121,10 @@ class ToolboxClient:
                 attempt += 1
 
     def _send(self, method: str, url: str, **kwargs) -> Any:
+        if outage.is_down():
+            error = ToolboxConnectionError(0, "Connection failed: outage switch is on")
+            error.request_sent = False
+            raise error
         try:
             response = self._client.request(method, url, **kwargs)
         except httpx.TimeoutException as exc:
