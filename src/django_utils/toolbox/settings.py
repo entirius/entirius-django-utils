@@ -9,6 +9,8 @@ Required in service settings_local.py:
     AI_TOOLBOX_API_KEY = "<toolbox API key>"
     AI_TOOLBOX_CHANNEL = "<toolbox channel idx>"
 
+``AI_TOOLBOX_ENABLED = False`` switches the toolbox off on purpose; the three settings above may then stay empty.
+
 ``from django_utils.toolbox.settings import AI_TOOLBOX_BASE_URL`` still works, but binds the value at
 import time — call sites that must honour ``override_settings`` read ``settings.AI_TOOLBOX_BASE_URL``
 through the module instead.
@@ -19,6 +21,7 @@ from typing import Any
 from django.conf import settings
 
 DEFAULTS: dict[str, Any] = {
+    "AI_TOOLBOX_ENABLED": True,
     "AI_TOOLBOX_BASE_URL": "",
     "AI_TOOLBOX_API_KEY": "",
     "AI_TOOLBOX_CHANNEL": "",

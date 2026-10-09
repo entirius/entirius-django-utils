@@ -10,6 +10,7 @@ from django_utils.toolbox import (
     ToolboxAuthError,
     ToolboxBudgetExceededError,
     ToolboxConnectionError,
+    ToolboxDisabledError,
     ToolboxError,
     ToolboxModelNotAllowedError,
     ToolboxNotConfiguredError,
@@ -27,6 +28,7 @@ UPSTREAM_SECRET = "upstream detail with prompt text"
 @pytest.mark.parametrize(
     ("exc", "http_status", "code"),
     [
+        (ToolboxDisabledError(), 503, "AI_TOOLBOX_DISABLED"),
         (ToolboxNotConfiguredError(), 503, "AI_TOOLBOX_NOT_CONFIGURED"),
         (ToolboxBudgetExceededError(402, "Monthly budget exceeded", "BUDGET_EXCEEDED"), 402, "BUDGET_EXCEEDED"),
         (ToolboxModelNotAllowedError(403, "Model not allowed", "MODEL_NOT_ALLOWED"), 403, "MODEL_NOT_ALLOWED"),
@@ -56,6 +58,15 @@ def test_not_configured_message_points_to_toolbox():
     response = handle_toolbox_error(ToolboxNotConfiguredError())
 
     assert response.data["message"] == "AI features are available with the Entirius AI Toolbox."
+
+
+def test_disabled_message_says_switched_off():
+    response = handle_toolbox_error(ToolboxDisabledError())
+
+    assert response.data == {
+        "error": "AI_TOOLBOX_DISABLED",
+        "message": "AI features are switched off on this instance.",
+    }
 
 
 def test_validation_carries_field_errors():

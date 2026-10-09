@@ -45,8 +45,9 @@ Utility library — no concrete models, no migrations (abstract bases only).
 ## Toolbox client
 
 `docs/toolbox-client.md` is the only reference for the toolbox settings (`AI_TOOLBOX_BASE_URL`,
-`AI_TOOLBOX_API_KEY`, `AI_TOOLBOX_CHANNEL`, timeouts, retries), the retry policy, the error mapping
-(`ToolboxConnectionError`, `ToolboxBudgetExceededError`, … → `handle_toolbox_error`), `status()` and
+`AI_TOOLBOX_API_KEY`, `AI_TOOLBOX_CHANNEL`, timeouts, retries, and `AI_TOOLBOX_ENABLED`, the switch that turns
+the toolbox off on purpose), the retry policy, the error mapping (`ToolboxConnectionError`,
+`ToolboxBudgetExceededError`, … → `handle_toolbox_error`), `status()`, `is_enabled()` and
 `testing.mock_toolbox`. Update it together with any change under `toolbox/`.
 
 ## Gotchas

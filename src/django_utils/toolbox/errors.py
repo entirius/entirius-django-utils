@@ -10,6 +10,7 @@ import httpx
 
 __all__ = [
     "ToolboxError",
+    "ToolboxDisabledError",
     "ToolboxNotConfiguredError",
     "ToolboxAuthError",
     "ToolboxModelNotAllowedError",
@@ -24,6 +25,7 @@ __all__ = [
     "parse_retry_after",
 ]
 
+DISABLED_MESSAGE = "AI toolbox is disabled on this instance"
 NOT_CONFIGURED_MESSAGE = "AI toolbox is not configured for this instance"
 MAX_RETRY_AFTER = 300.0
 
@@ -51,6 +53,13 @@ class ToolboxError(Exception):
         self.upstream_message = upstream_message
         prefix = f"Toolbox HTTP {status_code} {code}" if code else f"Toolbox HTTP {status_code}"
         super().__init__(f"{prefix}: {message}")
+
+
+class ToolboxDisabledError(ToolboxError):
+    """``AI_TOOLBOX_ENABLED`` is False — the instance runs without the toolbox on purpose."""
+
+    def __init__(self) -> None:
+        super().__init__(0, DISABLED_MESSAGE, code="AI_TOOLBOX_DISABLED")
 
 
 class ToolboxNotConfiguredError(ToolboxError):

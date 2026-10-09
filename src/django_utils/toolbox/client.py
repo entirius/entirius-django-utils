@@ -22,6 +22,7 @@ from django_utils.toolbox import outage
 from django_utils.toolbox import settings as toolbox_settings
 from django_utils.toolbox.errors import (
     ToolboxConnectionError,
+    ToolboxDisabledError,
     ToolboxError,
     ToolboxNotConfiguredError,
     ToolboxRateLimitError,
@@ -61,6 +62,8 @@ class ToolboxClient:
     """
 
     def __init__(self, channel_idx: str | None = None, *, max_retries: int | None = None) -> None:
+        if not toolbox_settings.AI_TOOLBOX_ENABLED:
+            raise ToolboxDisabledError()
         base_url, api_key = toolbox_settings.AI_TOOLBOX_BASE_URL, toolbox_settings.AI_TOOLBOX_API_KEY
         channel_idx = toolbox_settings.AI_TOOLBOX_CHANNEL if channel_idx is None else channel_idx
         if not (base_url and api_key and channel_idx):
