@@ -20,6 +20,7 @@ Shared Django utilities for Volkanos services — distribution `entirius-django-
 - Never rename the package / Django app_label / DB table prefix `django_utils` — it is a schema contract.
 - Migrations are part of the public contract — never edit an already released migration.
 - Default: do not commit — git is the user's call.
+- No AI attribution in commits or PR descriptions.
 
 ## Architecture
 
@@ -40,14 +41,14 @@ Utility library — no concrete models, no migrations (abstract bases only).
   `_get`/`_post`/`_request` for subclasses such as the translator), `errors.py` (typed errors +
   `error_from_response`), `schemas.py` (Pydantic contract), `status.py` (`status()` for UIs),
   `views.py` (`handle_toolbox_error`), `settings.py` (lazy), `testing.py` (respx `mock_toolbox`),
-  `outage.py` (dev/test-only outage switch).
+  `outage.py` (dev/test-only outage switch). Reference for the toolbox settings (`AI_TOOLBOX_BASE_URL`,
+  `AI_TOOLBOX_API_KEY`, `AI_TOOLBOX_CHANNEL`, timeouts, retries), the retry policy, the error mapping
+  (`ToolboxConnectionError`, `ToolboxBudgetExceededError`, … → `handle_toolbox_error`), `status()` and
+  `testing.mock_toolbox`: `docs/toolbox-client.md` only — update it together with any change under `toolbox/`.
 
-## Toolbox client
-
-`docs/toolbox-client.md` is the only reference for the toolbox settings (`AI_TOOLBOX_BASE_URL`,
-`AI_TOOLBOX_API_KEY`, `AI_TOOLBOX_CHANNEL`, timeouts, retries), the retry policy, the error mapping
-(`ToolboxConnectionError`, `ToolboxBudgetExceededError`, … → `handle_toolbox_error`), `status()` and
-`testing.mock_toolbox`. Update it together with any change under `toolbox/`.
+| Topic | Where |
+|---|---|
+| AI toolbox client | `docs/toolbox-client.md` |
 
 ## Gotchas
 
