@@ -170,9 +170,10 @@ def save_ip_and_country(view_func):
 
 
 def verify_captcha(view_func):
+    # RuntimeError: an app that is installed but not in INSTALLED_APPS raises it on model import, not ImportError.
     try:
         from django_captcha.output.decorators import verify_recaptcha
-    except ImportError:
+    except (ImportError, RuntimeError):
         return view_func
 
     return verify_recaptcha(view_func)

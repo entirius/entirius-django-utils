@@ -7,6 +7,8 @@
   not-configured check, `status()` returns the new `ToolboxStatus.DISABLED` (`disabled`) without network or cache,
   and `handle_toolbox_error` answers 503 `AI_TOOLBOX_DISABLED`. New `is_enabled()`. The outage switch has no effect
   while the toolbox is disabled. Nothing changes for an instance that leaves the setting alone.
+- Optional sibling apps that are installed but not enabled no longer crash imports (`RuntimeError` is caught like
+  `ImportError`).
 
 ## 2.2.0 — 2026-09-16
 
