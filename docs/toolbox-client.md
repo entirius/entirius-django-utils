@@ -28,7 +28,7 @@ first: `"False"` is truthy.
 
 ```python
 # service settings_local.py
-AI_TOOLBOX_BASE_URL = "https://ai-toolbox.internal:8000"
+AI_TOOLBOX_BASE_URL = "https://toolbox.example.com"
 AI_TOOLBOX_API_KEY = env("AI_TOOLBOX_API_KEY")
 AI_TOOLBOX_CHANNEL = "my-channel"
 ```
