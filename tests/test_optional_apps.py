@@ -83,3 +83,19 @@ def test_verify_captcha_returns_the_view_without_captcha(disable_app):
     disable_app("django_captcha")
 
     assert verify_captcha(view) is view
+
+
+def test_verify_captcha_warns_once_naming_the_unprotected_view(disable_app, caplog):
+    from django_utils.api.decorators import verify_captcha
+
+    def account_create(request):
+        return None
+
+    disable_app("django_captcha")
+    with caplog.at_level("WARNING", logger="django_utils.api.decorators"):
+        verify_captcha(account_create)
+
+    [record] = caplog.records
+    assert record.levelname == "WARNING"
+    assert "account_create" in record.getMessage()
+    assert "INSTALLED_APPS" in record.getMessage()

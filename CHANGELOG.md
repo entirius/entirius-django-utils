@@ -10,6 +10,12 @@
 - Optional sibling apps that are installed but not enabled no longer crash imports (`RuntimeError` is caught like
   `ImportError`).
 
+### Security
+
+- `verify_captcha` logs one warning per decorated view, at import time, when `django_captcha` is installed but not
+  in `INSTALLED_APPS`: the view still runs without captcha (unchanged), and the log names it, so an app dropped by
+  mistake is visible. Nothing is logged when the package is absent.
+
 ## 2.2.0 — 2026-09-16
 
 - `django_utils.toolbox.outage`: dev/test-only outage switch — while on, every toolbox request fails as a refused

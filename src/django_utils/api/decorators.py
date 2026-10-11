@@ -173,7 +173,14 @@ def verify_captcha(view_func):
     # RuntimeError: an app that is installed but not in INSTALLED_APPS raises it on model import, not ImportError.
     try:
         from django_captcha.output.decorators import verify_recaptcha
-    except (ImportError, RuntimeError):
+    except ImportError:
+        return view_func
+    except RuntimeError:
+        logger.warning(
+            "verify_captcha: django_captcha is installed but not in INSTALLED_APPS, %s.%s runs without captcha",
+            view_func.__module__,
+            view_func.__qualname__,
+        )
         return view_func
 
     return verify_recaptcha(view_func)
