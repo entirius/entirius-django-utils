@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.3.0 — 2026-10-12
+
+- `django_utils.toolbox`: new setting `AI_TOOLBOX_ENABLED` (default `True`). `False` switches the AI toolbox off on
+  purpose: `ToolboxClient()` raises the new `ToolboxDisabledError` (code `AI_TOOLBOX_DISABLED`) before the
+  not-configured check, `status()` returns the new `ToolboxStatus.DISABLED` (`disabled`) without network or cache,
+  and `handle_toolbox_error` answers 503 `AI_TOOLBOX_DISABLED`. New `is_enabled()`. The outage switch has no effect
+  while the toolbox is disabled. Nothing changes for an instance that leaves the setting alone.
+- Optional sibling apps that are installed but not enabled no longer crash imports (`RuntimeError` is caught like
+  `ImportError`).
+
+### Security
+
+- `verify_captcha` logs one warning per decorated view, at import time, when `django_captcha` is installed but not
+  in `INSTALLED_APPS`: the view still runs without captcha (unchanged), and the log names it, so an app dropped by
+  mistake is visible. Nothing is logged when the package is absent.
+
 ## 2.2.0 — 2026-09-16
 
 - `django_utils.toolbox.outage`: dev/test-only outage switch — while on, every toolbox request fails as a refused

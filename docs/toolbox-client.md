@@ -11,10 +11,13 @@ and returns parsed bodies. Prompts, models and Celery tasks belong to the callin
 
 Read from `django.conf.settings` on every access, so `override_settings` works. With any of the first three
 empty the instance runs without the toolbox: `ToolboxClient()` raises `ToolboxNotConfiguredError` and
-`status()` returns `unconfigured` without a network call.
+`status()` returns `unconfigured` without a network call. `AI_TOOLBOX_ENABLED = False` switches the toolbox off
+on purpose, whatever the other settings hold. It is read as a truth value, so convert an environment string
+first: `"False"` is truthy.
 
 | Setting | Default | Meaning |
 |---|---|---|
+| `AI_TOOLBOX_ENABLED` | `True` | `False` switches the toolbox off on purpose: `status()` is `disabled`, `ToolboxClient()` raises `ToolboxDisabledError`, views answer 503 `AI_TOOLBOX_DISABLED`; the three credentials may stay empty |
 | `AI_TOOLBOX_BASE_URL` | `""` | toolbox root URL (trailing `/` is stripped) |
 | `AI_TOOLBOX_API_KEY` | `""` | sent as `X-API-Key` — a secret, keep it out of the repository |
 | `AI_TOOLBOX_CHANNEL` | `""` | toolbox channel idx, part of every URL; `[a-zA-Z0-9_-]+`, else `ValueError` |
@@ -25,7 +28,7 @@ empty the instance runs without the toolbox: `ToolboxClient()` raises `ToolboxNo
 
 ```python
 # service settings_local.py
-AI_TOOLBOX_BASE_URL = "https://ai-toolbox.internal:8000"
+AI_TOOLBOX_BASE_URL = "https://toolbox.example.com"
 AI_TOOLBOX_API_KEY = env("AI_TOOLBOX_API_KEY")
 AI_TOOLBOX_CHANNEL = "my-channel"
 ```
@@ -84,6 +87,7 @@ All inherit `ToolboxError` (`status_code`, `message`, `code`, `field_errors`, `u
 
 | Toolbox response | Exception | `handle_toolbox_error` response |
 |---|---|---|
+| `AI_TOOLBOX_ENABLED` is `False` (checked first) | `ToolboxDisabledError` | 503 `AI_TOOLBOX_DISABLED` |
 | a setting is empty | `ToolboxNotConfiguredError` | 503 `AI_TOOLBOX_NOT_CONFIGURED` |
 | 402 | `ToolboxBudgetExceededError` | 402 `BUDGET_EXCEEDED` |
 | 403 `MODEL_NOT_ALLOWED` | `ToolboxModelNotAllowedError` | 403 `MODEL_NOT_ALLOWED` |
@@ -105,10 +109,15 @@ it and never put it into a response.
 
 ## Status for UIs
 
-`status()` returns `ToolboxStatus.configured | unconfigured | unreachable` and never raises, so it is safe
-inside a request. `unconfigured` needs no network; otherwise one `GET models/` probe (single attempt, 5 s
-timeout) is cached for 60 s under `django_utils.toolbox.status` in the Django cache. A failing cache backend
-reads as `unreachable`.
+`status()` returns `ToolboxStatus.configured | unconfigured | unreachable | disabled` and never raises, so it
+is safe inside a request. `disabled` and `unconfigured` need no network and no cache; otherwise one
+`GET models/` probe (single attempt, 5 s timeout) is cached for 60 s under `django_utils.toolbox.status` in the
+Django cache. A failing cache backend reads as `unreachable`.
+
+`disabled` (`AI_TOOLBOX_ENABLED = False`) is checked first and is a deliberate state, not a failure: a caller
+raises no alert, writes no failed record and schedules no retry. `is_enabled()` answers the same question as a
+bool, for code that must decide before it builds a client. `unconfigured` stays a warning: the toolbox is
+enabled but not set up.
 
 The attribute `django_utils.toolbox.status` is the re-exported function, not the module: a dotted
 `monkeypatch.setattr("django_utils.toolbox.status.<name>", …)` resolves to the function. Patch the module
@@ -119,7 +128,8 @@ CACHE_KEY` still works.
 
 `django_utils.toolbox.outage` simulates "toolbox down" without stopping the toolbox: while it is on, every
 request of every `ToolboxClient` fails as `ToolboxConnectionError` (status `0`, `request_sent = False`) before
-any network call, so `status()` reads `unreachable` too.
+any network call, so `status()` reads `unreachable` too. With `AI_TOOLBOX_ENABLED = False` the switch has no
+effect: no client is ever built, `status()` stays `disabled`, and `set_down()` still stores its flag.
 
 | Function | Meaning |
 |---|---|

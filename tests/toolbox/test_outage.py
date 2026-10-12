@@ -7,7 +7,14 @@
 import pytest
 from django.core.cache import cache
 
-from django_utils.toolbox import ToolboxClient, ToolboxConnectionError, ToolboxStatus, outage, status
+from django_utils.toolbox import (
+    ToolboxClient,
+    ToolboxConnectionError,
+    ToolboxDisabledError,
+    ToolboxStatus,
+    outage,
+    status,
+)
 from django_utils.toolbox.status import CACHE_KEY as STATUS_CACHE_KEY
 
 from .conftest import make_request
@@ -68,6 +75,18 @@ def test_item3_switch_off_restores_requests_and_drops_cached_status(switchable, 
     assert cache.get(STATUS_CACHE_KEY) is None
     assert status() == ToolboxStatus.CONFIGURED
     assert outage.is_down() is False
+
+
+def test_switch_has_no_effect_while_the_toolbox_is_disabled(switchable, router):
+    switchable.AI_TOOLBOX_ENABLED = False
+
+    outage.set_down(True)
+
+    assert outage.is_down() is True
+    assert status() == ToolboxStatus.DISABLED
+    with pytest.raises(ToolboxDisabledError):
+        ToolboxClient()
+    assert router.calls.call_count == 0
 
 
 def test_item3_switch_on_expires(switchable, monkeypatch):
