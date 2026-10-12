@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.0 — 2026-10-12
 
 - `django_utils.toolbox`: new setting `AI_TOOLBOX_ENABLED` (default `True`). `False` switches the AI toolbox off on
   purpose: `ToolboxClient()` raises the new `ToolboxDisabledError` (code `AI_TOOLBOX_DISABLED`) before the
