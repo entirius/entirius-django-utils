@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from django_utils.toolbox.errors import (
     ToolboxBudgetExceededError,
+    ToolboxDisabledError,
     ToolboxError,
     ToolboxModelNotAllowedError,
     ToolboxNotConfiguredError,
@@ -24,11 +25,14 @@ from django_utils.toolbox.errors import (
 
 logger = logging.getLogger(__name__)
 
+DISABLED_UI_MESSAGE = "AI features are switched off on this instance."
 NOT_CONFIGURED_UI_MESSAGE = "AI features are available with the Entirius AI Toolbox."
 
 
 def handle_toolbox_error(exc: ToolboxError) -> Response:
     """Map a ToolboxError to a DRF Response; unknown failures become a generic 502 with a debug id."""
+    if isinstance(exc, ToolboxDisabledError):
+        return _error(status.HTTP_503_SERVICE_UNAVAILABLE, "AI_TOOLBOX_DISABLED", DISABLED_UI_MESSAGE)
     if isinstance(exc, ToolboxNotConfiguredError):
         return _error(status.HTTP_503_SERVICE_UNAVAILABLE, "AI_TOOLBOX_NOT_CONFIGURED", NOT_CONFIGURED_UI_MESSAGE)
     if isinstance(exc, ToolboxBudgetExceededError):

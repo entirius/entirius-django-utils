@@ -23,10 +23,18 @@ class ToolboxStatus(StrEnum):
     CONFIGURED = "configured"
     UNCONFIGURED = "unconfigured"
     UNREACHABLE = "unreachable"
+    DISABLED = "disabled"
+
+
+def is_enabled() -> bool:
+    """False when the instance switched the toolbox off on purpose (``AI_TOOLBOX_ENABLED = False``)."""
+    return bool(toolbox_settings.AI_TOOLBOX_ENABLED)
 
 
 def status() -> ToolboxStatus:
-    """``unconfigured`` without network when a setting is empty; otherwise one cached ``GET models/`` probe."""
+    """``disabled`` or ``unconfigured`` without network or cache; otherwise one cached ``GET models/`` probe."""
+    if not is_enabled():
+        return ToolboxStatus.DISABLED
     settings_present = (
         toolbox_settings.AI_TOOLBOX_BASE_URL
         and toolbox_settings.AI_TOOLBOX_API_KEY

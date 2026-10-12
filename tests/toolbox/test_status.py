@@ -2,14 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-"""status(): unconfigured without network, configured cached, unreachable on any failure."""
+"""status(): disabled and unconfigured without network, configured cached, unreachable on any failure."""
 
 import httpx
 import pytest
 import respx
 from django.core.cache import cache
 
-from django_utils.toolbox import ToolboxStatus, status
+from django_utils.toolbox import ToolboxStatus, is_enabled, status
 from django_utils.toolbox.status import CACHE_KEY
 from django_utils.toolbox.testing import error_response
 
@@ -22,6 +22,35 @@ def test_status_unconfigured_no_network(settings, name):
         assert status() == ToolboxStatus.UNCONFIGURED
 
     assert mocked.calls.call_count == 0
+
+
+@pytest.mark.parametrize("base_url", ["", "https://toolbox.test.internal"])
+def test_status_disabled_no_network_no_cache(settings, monkeypatch, base_url):
+    settings.AI_TOOLBOX_ENABLED = False
+    settings.AI_TOOLBOX_BASE_URL = base_url
+    cache.set(CACHE_KEY, "configured")
+    touched = []
+    monkeypatch.setattr(cache, "get", lambda *args: touched.append(args))
+    monkeypatch.setattr(cache, "set", lambda *args: touched.append(args))
+
+    with respx.mock(assert_all_mocked=True) as mocked:
+        assert status() == ToolboxStatus.DISABLED
+
+    assert mocked.calls.call_count == 0
+    assert touched == []
+
+
+@pytest.mark.parametrize(("value", "expected"), [(True, True), (False, False), (0, False)])
+def test_is_enabled_follows_the_setting(settings, value, expected):
+    settings.AI_TOOLBOX_ENABLED = value
+
+    assert is_enabled() is expected
+
+
+def test_enabled_by_default(settings):
+    del settings.AI_TOOLBOX_ENABLED
+
+    assert is_enabled() is True
 
 
 def test_status_configured_cached(router):

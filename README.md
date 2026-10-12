@@ -1,59 +1,76 @@
-# django-utils
+# entirius-django-utils
 
-Shared Django utilities for Volkanos services — abstract base models and managers, DRF API helpers
-(request parsing, filtering, pagination, v1/v2 error handling), admin base classes, text and
-translation tools, and worker command helpers.
+Shared Django building blocks for the modules of Entirius, the open-source modular ecommerce platform.
+Abstract base models, DRF API helpers, admin base classes, text tools and an AI toolbox client live here, so
+every module builds on the same foundations.
+
+[![PyPI](https://img.shields.io/pypi/v/entirius-django-utils.svg)](https://pypi.org/project/entirius-django-utils/)
+[![Python](https://img.shields.io/pypi/pyversions/entirius-django-utils.svg)](https://pypi.org/project/entirius-django-utils/)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](https://github.com/entirius/entirius-django-utils/blob/develop/LICENSE)
+
+## What it does
+
+- Abstract base models and manager helpers shared by every Entirius module.
+- DRF helpers: request parsing, filtering, pagination and the structured v2 error handling.
+- Admin base classes, text, slug and translation helpers.
+- A base for worker management commands with locking.
+- A typed client for the AI toolbox (completions, model catalogue, error mapping to DRF responses).
 
 ## Installation
 
 ```shell
+uv add entirius-django-utils
 pip install entirius-django-utils
 ```
 
-Add the app to your project:
+Optional extra: `entirius-django-utils[unfold]` (django-unfold admin theme).
 
 ```python
 INSTALLED_APPS = [
     ...
+    "django_regional",
     "django_utils",
 ]
 ```
 
-## Toolbox client
+The toolbox client needs `AI_TOOLBOX_BASE_URL`, `AI_TOOLBOX_API_KEY` and `AI_TOOLBOX_CHANNEL`; the settings
+reference is https://github.com/entirius/entirius-django-utils/blob/develop/docs/toolbox-client.md.
 
-`django_utils.toolbox` talks to the Entirius AI Toolbox (completion proxy + model catalogue). Configure it in
-the service settings; with any of the three empty, the client raises `ToolboxNotConfiguredError` and
-`status()` returns `unconfigured` without touching the network.
-
-```python
-AI_TOOLBOX_BASE_URL = "https://ai-toolbox.internal:8000"
-AI_TOOLBOX_API_KEY = env("AI_TOOLBOX_API_KEY")
-AI_TOOLBOX_CHANNEL = "my-channel"
-```
+## Quick start
 
 ```python
-from django_utils.toolbox import CompletionRequest, Message, ToolboxClient, ToolboxError, handle_toolbox_error
+from django_utils.toolbox import CompletionRequest, Message, ToolboxClient
 
-try:
-    with ToolboxClient() as client:
-        response = client.complete(
-            CompletionRequest(
-                model="fake-chat",
-                messages=[Message(role="user", content="Say hi as JSON")],
-                json_schema={"type": "object"},
-                tags=["leads.draft"],
-            )
+# settings: AI_TOOLBOX_BASE_URL = "https://toolbox.example.com"
+with ToolboxClient() as client:
+    response = client.complete(
+        CompletionRequest(
+            model="fake-chat",
+            messages=[Message(role="user", content="Say hi as JSON")],
+            json_schema={"type": "object"},
         )
-except ToolboxError as exc:
-    return handle_toolbox_error(exc)  # DRF Response: 402/403/404/400/422/503/504 or a generic 502
+    )
 ```
 
-`complete()` makes exactly one HTTP attempt — it is paid and non-idempotent, retrying is the caller's
-decision. `list_models()` retries on 5xx with backoff. Store responses with `model_dump(mode="json")`
-(`cost` is a `Decimal`). In tests, `django_utils.toolbox.testing.mock_toolbox()` (needs the `test` extra)
-mocks both endpoints with canned answers; `error_response(402, "BUDGET_EXCEEDED")` builds error bodies.
+## Requirements
 
-Full reference — settings, retries, error mapping: [docs/toolbox-client.md](docs/toolbox-client.md).
+- Python 3.11 or newer, Django 4.2 or newer.
+- Entirius packages pulled in: `entirius-django-regional`, `entirius-py-idx-normalizator`,
+  `entirius-py-process-logger`.
+
+## Documentation
+
+- Module docs: https://github.com/entirius/entirius-django-utils/tree/develop/docs
+- Entirius documentation: https://docs.entirius.com/
+- Changelog: https://github.com/entirius/entirius-django-utils/blob/develop/CHANGELOG.md
+
+## Part of Entirius
+
+Every module of the Entirius backend service (Volkanos) depends on this package.
+
+- Backend service: https://github.com/entirius/entirius-service-volkanos
+- Docker harness: https://github.com/entirius/entirius-zeno
+- Sibling modules: https://github.com/entirius/entirius-django-regional, https://github.com/entirius/entirius-django-utils-translator
 
 ## Development
 
@@ -63,8 +80,8 @@ make check       # lint + format check (ruff)
 make test        # test suite (pytest + pytest-django)
 ```
 
-Development and agent instructions: [AGENTS.md](AGENTS.md).
+Development and agent instructions: https://github.com/entirius/entirius-django-utils/blob/develop/AGENTS.md
 
 ## License
 
-Mozilla Public License 2.0 — see [LICENSE](LICENSE).
+Mozilla Public License 2.0 (MPL-2.0) — see https://github.com/entirius/entirius-django-utils/blob/develop/LICENSE.

@@ -5,6 +5,7 @@ from .errors import (
     ToolboxAuthError,
     ToolboxBudgetExceededError,
     ToolboxConnectionError,
+    ToolboxDisabledError,
     ToolboxError,
     ToolboxModelNotAllowedError,
     ToolboxNotConfiguredError,
@@ -15,7 +16,7 @@ from .errors import (
     ToolboxValidationError,
 )
 from .schemas import CompletionRequest, CompletionResponse, Message, ModelInfo, Usage
-from .status import ToolboxStatus, status
+from .status import ToolboxStatus, is_enabled, status
 from .views import handle_toolbox_error
 
 __all__ = [
@@ -26,9 +27,11 @@ __all__ = [
     "ModelInfo",
     "Usage",
     "status",
+    "is_enabled",
     "ToolboxStatus",
     "handle_toolbox_error",
     "ToolboxError",
+    "ToolboxDisabledError",
     "ToolboxNotConfiguredError",
     "ToolboxAuthError",
     "ToolboxModelNotAllowedError",

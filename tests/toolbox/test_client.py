@@ -20,6 +20,7 @@ from django_utils.toolbox import (
     ToolboxBudgetExceededError,
     ToolboxClient,
     ToolboxConnectionError,
+    ToolboxDisabledError,
     ToolboxError,
     ToolboxModelNotAllowedError,
     ToolboxNotConfiguredError,
@@ -41,6 +42,19 @@ def test_empty_setting_raises_not_configured(settings, name):
         ToolboxClient()
 
     assert exc_info.value.message == "AI toolbox is not configured for this instance"
+
+
+@pytest.mark.parametrize("base_url", ["", "https://toolbox.test.internal"])
+def test_disabled_raises_before_not_configured(settings, router, base_url):
+    settings.AI_TOOLBOX_ENABLED = False
+    settings.AI_TOOLBOX_BASE_URL = base_url
+
+    with pytest.raises(ToolboxDisabledError) as exc_info:
+        ToolboxClient()
+
+    assert exc_info.value.code == "AI_TOOLBOX_DISABLED"
+    assert exc_info.value.message == "AI toolbox is disabled on this instance"
+    assert router.calls.call_count == 0
 
 
 def test_invalid_channel_idx_rejected():
