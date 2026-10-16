@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `django_utils.api.v2_errors`: `raise_pydantic_as_drf(exc, location="body")` takes the location of the validated
+  input (`body` | `path` | `query`) and the v2 handler puts it on every detail; a schema built from
+  `request.query_params` passes `"query"` (#12). Before, every detail said `body`. Modules update their query-schema
+  calls at their next release.
+
 ## 2.3.0 — 2026-10-12
 
 - `django_utils.toolbox`: new setting `AI_TOOLBOX_ENABLED` (default `True`). `False` switches the AI toolbox off on
