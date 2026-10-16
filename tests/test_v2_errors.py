@@ -5,10 +5,12 @@
 """make_exception_handler routing, including the no-v1-handler default."""
 
 import pytest
-from rest_framework.exceptions import APIException, NotFound
+from pydantic import BaseModel
+from pydantic import ValidationError as PydanticValidationError
+from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.test import APIRequestFactory
 
-from django_utils.api.v2_errors import make_exception_handler
+from django_utils.api.v2_errors import make_exception_handler, raise_pydantic_as_drf
 
 
 def _context(path):
@@ -74,3 +76,30 @@ def test_item11_other_statuses_keep_the_generic_message():
     response = _v2(NotFound("secret row 42"))
 
     assert response.data["message"] == "The requested resource was not found."
+
+
+class _Filters(BaseModel):
+    current: bool
+
+
+def _pydantic_error(**kwargs):
+    with pytest.raises(PydanticValidationError) as invalid:
+        _Filters(current="maybe")
+    with pytest.raises(ValidationError) as raised:
+        raise_pydantic_as_drf(invalid.value, **kwargs)
+    return raised.value
+
+
+def test_issue12_pydantic_error_defaults_to_body():
+    response = _v2(_pydantic_error())
+
+    assert response.status_code == 400
+    assert [d["location"] for d in response.data["details"]] == ["body"]
+
+
+def test_issue12_query_schema_reports_location_query():
+    response = _v2(_pydantic_error(location="query"))
+
+    assert response.data["error"] == "VALIDATION_ERROR"
+    assert response.data["details"][0]["field"] == "current"
+    assert [d["location"] for d in response.data["details"]] == ["query"]
