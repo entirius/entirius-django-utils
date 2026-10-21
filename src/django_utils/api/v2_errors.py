@@ -63,6 +63,7 @@ _DRF_TO_ERROR_CODE = {
     "AuthenticationFailed": "AUTHENTICATION_REQUIRED",
     "PermissionDenied": "PERMISSION_DENIED",
     "NotFound": "NOT_FOUND",
+    "Http404": "NOT_FOUND",
     "MethodNotAllowed": "INVALID_REQUEST",
     "NotAcceptable": "INVALID_REQUEST",
     "Throttled": "RATE_LIMITED",
