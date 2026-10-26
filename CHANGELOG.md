@@ -1,6 +1,8 @@
 # Changelog
 
-## 2.3.1rc1 — 2026-10-17
+## 2.4.0rc1 — 2026-10-26
+
+2.3.1rc1 was never published; its fix ships here.
 
 - `django_utils.api.v2_errors`: Django's `Http404` (raised by `get_object_or_404`) answers `error: NOT_FOUND` like
   DRF's `NotFound`; before, the v2 envelope said `INVALID_REQUEST` on a 404.
