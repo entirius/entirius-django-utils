@@ -5,6 +5,7 @@
 """make_exception_handler routing, including the no-v1-handler default."""
 
 import pytest
+from django.http import Http404
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 from rest_framework.exceptions import APIException, NotFound, ValidationError
@@ -75,6 +76,15 @@ def test_item11_conflict_keeps_field_details():
 def test_item11_other_statuses_keep_the_generic_message():
     response = _v2(NotFound("secret row 42"))
 
+    assert response.data["message"] == "The requested resource was not found."
+
+
+def test_django_http404_reads_not_found():
+    """get_object_or_404 raises Django's Http404, not DRF's NotFound."""
+    response = _v2(Http404("No ProductRepresentation matches the given query."))
+
+    assert response.status_code == 404
+    assert response.data["error"] == "NOT_FOUND"
     assert response.data["message"] == "The requested resource was not found."
 
 
