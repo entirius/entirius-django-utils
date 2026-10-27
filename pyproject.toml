@@ -1,6 +1,6 @@
 [project]
 name = "entirius-django-utils"
-version = "2.3.0"
+version = "2.4.0"
 description = "Shared Django utilities for Entirius modules: base models, DRF API helpers, admin tools, AI toolbox client"
 keywords = ["django", "utilities", "drf", "admin", "ecommerce", "entirius"]
 classifiers = [

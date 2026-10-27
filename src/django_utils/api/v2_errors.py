@@ -23,6 +23,7 @@ with none, DRF's own handler serves them. See make_exception_handler.
 
 import logging
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
@@ -31,6 +32,8 @@ from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
 
 logger = logging.getLogger(__name__)
+
+Location = Literal["body", "path", "query"]
 
 
 # --- Pydantic Schemas ---
@@ -63,6 +66,7 @@ _DRF_TO_ERROR_CODE = {
     "AuthenticationFailed": "AUTHENTICATION_REQUIRED",
     "PermissionDenied": "PERMISSION_DENIED",
     "NotFound": "NOT_FOUND",
+    "Http404": "NOT_FOUND",
     "MethodNotAllowed": "INVALID_REQUEST",
     "NotAcceptable": "INVALID_REQUEST",
     "Throttled": "RATE_LIMITED",
@@ -87,7 +91,7 @@ def _generate_debug_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def _build_validation_details(detail: dict | list | str) -> list[ErrorDetail]:
+def _build_validation_details(detail: dict | list | str, location: str = "body") -> list[ErrorDetail]:
     """Convert DRF validation error detail into structured ErrorDetail list."""
     details = []
 
@@ -99,7 +103,7 @@ def _build_validation_details(detail: dict | list | str) -> list[ErrorDetail]:
                     details.append(
                         ErrorDetail(
                             field=field_name if field_name != "non_field_errors" else None,
-                            location="body",
+                            location=location,
                             issue=issue,
                             description=str(error),
                         )
@@ -108,14 +112,14 @@ def _build_validation_details(detail: dict | list | str) -> list[ErrorDetail]:
                 details.append(
                     ErrorDetail(
                         field=field_name if field_name != "non_field_errors" else None,
-                        location="body",
+                        location=location,
                         issue="INVALID",
                         description=str(errors),
                     )
                 )
     elif isinstance(detail, list):
         for error in detail:
-            details.append(ErrorDetail(field=None, location="body", issue="INVALID", description=str(error)))
+            details.append(ErrorDetail(field=None, location=location, issue="INVALID", description=str(error)))
 
     return details
 
@@ -146,7 +150,7 @@ def v2_exception_handler(exc, context):
 
         details = []
         if isinstance(exc, drf_exceptions.ValidationError):
-            details = _build_validation_details(handled.data)
+            details = _build_validation_details(handled.data, getattr(exc, "location", "body"))
         elif status_code == 409 and isinstance(exc, drf_exceptions.APIException):
             error_code, message, details = _conflict_parts(exc)
 
@@ -169,13 +173,19 @@ def v2_exception_handler(exc, context):
 # --- Public API ---
 
 
-def raise_pydantic_as_drf(exc: PydanticValidationError) -> None:
-    """Convert Pydantic ValidationError into DRF ValidationError."""
+def raise_pydantic_as_drf(exc: PydanticValidationError, location: Location = "body") -> None:
+    """Convert Pydantic ValidationError into DRF ValidationError.
+
+    `location` names where the validated input came from; every detail of the v2 response carries it.
+    A schema built from `request.query_params` passes "query".
+    """
     detail: dict[str, list[str]] = {}
     for error in exc.errors():
         field_name = ".".join(str(loc) for loc in error["loc"]) or "non_field_errors"
         detail.setdefault(field_name, []).append(error["msg"])
-    raise drf_exceptions.ValidationError(detail)
+    drf_error = drf_exceptions.ValidationError(detail)
+    drf_error.location = location
+    raise drf_error
 
 
 def make_exception_handler(v1_handler=None):
