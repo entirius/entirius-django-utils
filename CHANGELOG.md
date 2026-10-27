@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.0rc1 — 2026-10-26
+## 2.4.0 — 2026-10-27
 
 2.3.1rc1 was never published; its fix ships here.
 
