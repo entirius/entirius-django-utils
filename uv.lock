@@ -351,7 +351,7 @@ wheels = [
 
 [[package]]
 name = "entirius-django-utils"
-version = "2.3.1rc1"
+version = "2.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
