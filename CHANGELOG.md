@@ -6,6 +6,10 @@
 
 - `django_utils.api.v2_errors`: Django's `Http404` (raised by `get_object_or_404`) answers `error: NOT_FOUND` like
   DRF's `NotFound`; before, the v2 envelope said `INVALID_REQUEST` on a 404.
+- `django_utils.api.v2_errors`: `raise_pydantic_as_drf(exc, location="body")` takes the location of the validated
+  input (`body` | `path` | `query`) and the v2 handler puts it on every detail; a schema built from
+  `request.query_params` passes `"query"` (#12). Before, every detail said `body`. Modules update their query-schema
+  calls at their next release.
 
 ## 2.3.0 — 2026-10-12
 
