@@ -59,3 +59,6 @@ Utility library — no concrete models, no migrations (abstract bases only).
   (may quote model output) — never log it, never put it in a response.
 - `verify_captcha` runs the view without captcha (warning logged) when `django_captcha` is absent; `CAPTCHA_REQUIRED=True` makes it raise `ImproperlyConfigured`. Installed but not in
   `INSTALLED_APPS` it does the same and logs one warning per decorated view at import time.
+- `get_client_ip` (`api/client_ip.py`): `CLIENT_IP_TRUSTED_PROXIES` + `CLIENT_IP_FORWARDED_HEADER` let a proxying
+  storefront pass the visitor IP; only an edge IP inside the trusted list may use it, and the value must parse with
+  `ipaddress`. The storefront has to overwrite the header on every request.

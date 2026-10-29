@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.2 — 2026-10-29
+
+### Security
+
+- `get_client_ip` supports a storefront that proxies `/api/*` server-side (Next rewrite): all such traffic arrives
+  from the storefront's IP, so per-IP throttles collapsed into one bucket per shop. New settings (both default to
+  the 2.4.1 behaviour): `CLIENT_IP_TRUSTED_PROXIES` (IPs or CIDRs, default empty) and `CLIENT_IP_FORWARDED_HEADER`
+  (`request.META` key, default `HTTP_X_CLIENT_IP`). When the edge IP (from `CLIENT_IP_HEADER` or DRF `get_ident`) is
+  inside a trusted proxy, the visitor IP is read from the forwarded header, if it is a valid IP address; otherwise
+  the edge IP is used. The storefront must always overwrite that header. A malformed trusted-proxy entry raises
+  `ImproperlyConfigured`; the list is parsed once (cached per distinct setting value), not per request. IPv4-mapped
+  IPv6 addresses (`::ffff:1.2.3.4`) are normalised to IPv4 before matching, for the edge IP and the forwarded value.
+
 ## 2.4.1 — 2026-10-29
 
 ### Security
