@@ -10,7 +10,8 @@
   (`request.META` key, default `HTTP_X_CLIENT_IP`). When the edge IP (from `CLIENT_IP_HEADER` or DRF `get_ident`) is
   inside a trusted proxy, the visitor IP is read from the forwarded header, if it is a valid IP address; otherwise
   the edge IP is used. The storefront must always overwrite that header. A malformed trusted-proxy entry raises
-  `ImproperlyConfigured`.
+  `ImproperlyConfigured`; the list is parsed once (cached per distinct setting value), not per request. IPv4-mapped
+  IPv6 addresses (`::ffff:1.2.3.4`) are normalised to IPv4 before matching, for the edge IP and the forwarded value.
 
 ## 2.4.1 — 2026-10-29
 

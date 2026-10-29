@@ -18,6 +18,7 @@ raises ``ImproperlyConfigured``. Empty list (default): the forwarded header is i
 """
 
 import ipaddress
+from functools import lru_cache
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -32,24 +33,31 @@ def _edge_ip(request) -> str:
 
 
 def _parse_ip(value: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """Parse an IP; an IPv4-mapped IPv6 address (``::ffff:1.2.3.4``) becomes the IPv4 address."""
     try:
-        return ipaddress.ip_address(value)
+        address = ipaddress.ip_address(value)
     except ValueError:
         return None
+    return getattr(address, "ipv4_mapped", None) or address
+
+
+@lru_cache(maxsize=16)
+def _parse_networks(entries: tuple[str, ...]) -> tuple:
+    networks = []
+    for entry in entries:
+        try:
+            networks.append(ipaddress.ip_network(entry.strip(), strict=False))
+        except ValueError as exc:
+            raise ImproperlyConfigured(f"CLIENT_IP_TRUSTED_PROXIES: invalid entry {entry!r}") from exc
+    return tuple(networks)
 
 
 def _is_trusted_proxy(ip: str) -> bool:
     address = _parse_ip(ip)
     if address is None:
         return False
-    for entry in getattr(settings, "CLIENT_IP_TRUSTED_PROXIES", ()):
-        try:
-            network = ipaddress.ip_network(str(entry).strip(), strict=False)
-        except ValueError as exc:
-            raise ImproperlyConfigured(f"CLIENT_IP_TRUSTED_PROXIES: invalid entry {entry!r}") from exc
-        if address.version == network.version and address in network:
-            return True
-    return False
+    entries = tuple(str(entry) for entry in getattr(settings, "CLIENT_IP_TRUSTED_PROXIES", ()))
+    return any(address.version == network.version and address in network for network in _parse_networks(entries))
 
 
 def get_client_ip(request) -> str:
@@ -58,8 +66,8 @@ def get_client_ip(request) -> str:
     if not _is_trusted_proxy(edge):
         return edge
     forwarded_header = getattr(settings, "CLIENT_IP_FORWARDED_HEADER", "HTTP_X_CLIENT_IP")
-    forwarded = request.META.get(forwarded_header, "").strip()
-    return forwarded if _parse_ip(forwarded) else edge
+    forwarded = _parse_ip(request.META.get(forwarded_header, "").strip())
+    return str(forwarded) if forwarded else edge
 
 
 class ClientIPThrottleMixin:

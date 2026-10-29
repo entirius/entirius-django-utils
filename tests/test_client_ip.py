@@ -164,3 +164,32 @@ def test_malformed_trusted_entry_raises(settings):
     settings.CLIENT_IP_TRUSTED_PROXIES = ["nonsense"]
     with pytest.raises(ImproperlyConfigured):
         get_client_ip(_request(REMOTE_ADDR=STOREFRONT))
+
+
+def test_ipv4_mapped_edge_matches_ipv4_entry(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = ["15.235.117.158", "10.0.0.0/8"]
+    request = _request(REMOTE_ADDR="::ffff:15.235.117.158", HTTP_X_CLIENT_IP="203.0.113.7")
+    assert get_client_ip(request) == "203.0.113.7"
+    request = _request(REMOTE_ADDR="::ffff:10.1.2.3", HTTP_X_CLIENT_IP="203.0.113.7")
+    assert get_client_ip(request) == "203.0.113.7"
+
+
+def test_ipv4_mapped_forwarded_value_is_normalised(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT]
+    request = _request(REMOTE_ADDR=STOREFRONT, HTTP_X_CLIENT_IP="::ffff:203.0.113.7")
+    assert get_client_ip(request) == "203.0.113.7"
+
+
+def test_trusted_proxies_parsed_once(settings, monkeypatch):
+    from django_utils.api import client_ip
+
+    client_ip._parse_networks.cache_clear()
+    calls = []
+    real = client_ip.ipaddress.ip_network
+    monkeypatch.setattr(client_ip.ipaddress, "ip_network", lambda *a, **k: calls.append(a) or real(*a, **k))
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT, "10.2.0.0/16"]
+    for _ in range(3):
+        get_client_ip(_request(REMOTE_ADDR=STOREFRONT))
+    assert len(calls) == 2
+    settings.CLIENT_IP_TRUSTED_PROXIES = ["10.3.0.0/16"]
+    assert get_client_ip(_request(REMOTE_ADDR=STOREFRONT, HTTP_X_CLIENT_IP="1.1.1.1")) == STOREFRONT
