@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.1 — 2026-10-29
+
+### Security
+
+- New `django_utils.api.client_ip`: `get_client_ip(request)` and `ClientIPThrottleMixin` for DRF throttles. New
+  setting `CLIENT_IP_HEADER` (a `request.META` key, e.g. `HTTP_CF_CONNECTING_IP`; default unset): when set and present
+  it is the client IP, otherwise DRF's `get_ident` applies (`NUM_PROXIES`). Per-IP throttles keyed on
+  `X-Forwarded-For` can be bypassed by spoofing it; set the header only when the origin is reachable solely through
+  the proxy that sets it.
+- `verify_captcha` logs a warning per decorated view when `django_captcha` is not installed (was silent). New setting
+  `CAPTCHA_REQUIRED` (default `False`, behaviour unchanged): `True` raises `ImproperlyConfigured` at decoration time
+  when `django_captcha` is missing or not in `INSTALLED_APPS`.
+
 ## 2.4.0 — 2026-10-27
 
 2.3.1rc1 was never published; its fix ships here.
