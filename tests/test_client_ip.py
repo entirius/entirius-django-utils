@@ -109,3 +109,87 @@ def test_captcha_required_raises_on_runtime_error(settings, monkeypatch):
     _broken_captcha(monkeypatch)
     with pytest.raises(ImproperlyConfigured):
         verify_captcha(_view)
+
+
+STOREFRONT = "10.1.1.1"
+
+
+def test_trusted_edge_uses_forwarded_header(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT]
+    request = _request(REMOTE_ADDR=STOREFRONT, HTTP_X_CLIENT_IP=" 203.0.113.7 ")
+    assert get_client_ip(request) == "203.0.113.7"
+
+
+def test_untrusted_edge_ignores_forwarded_header(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT]
+    request = _request(REMOTE_ADDR="9.9.9.9", HTTP_X_CLIENT_IP="203.0.113.7")
+    assert get_client_ip(request) == "9.9.9.9"
+
+
+def test_empty_trusted_list_ignores_forwarded_header():
+    request = _request(REMOTE_ADDR=STOREFRONT, HTTP_X_CLIENT_IP="203.0.113.7")
+    assert get_client_ip(request) == STOREFRONT
+
+
+def test_cidr_match(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = ["10.1.0.0/16", "fd00::/8"]
+    assert get_client_ip(_request(REMOTE_ADDR="10.1.200.3", HTTP_X_CLIENT_IP="203.0.113.7")) == "203.0.113.7"
+    assert get_client_ip(_request(REMOTE_ADDR="10.2.0.1", HTTP_X_CLIENT_IP="203.0.113.7")) == "10.2.0.1"
+
+
+@pytest.mark.parametrize("value", ["", "not-an-ip", "1.2.3.4, 5.6.7.8", "<script>"])
+def test_invalid_forwarded_value_falls_back(settings, value):
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT]
+    request = _request(REMOTE_ADDR=STOREFRONT, HTTP_X_CLIENT_IP=value)
+    assert get_client_ip(request) == STOREFRONT
+
+
+def test_custom_forwarded_header(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT]
+    settings.CLIENT_IP_FORWARDED_HEADER = "HTTP_X_VISITOR"
+    request = _request(REMOTE_ADDR=STOREFRONT, HTTP_X_VISITOR="203.0.113.7", HTTP_X_CLIENT_IP="1.1.1.1")
+    assert get_client_ip(request) == "203.0.113.7"
+
+
+def test_combined_with_client_ip_header(settings):
+    settings.CLIENT_IP_HEADER = CF
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT]
+    request = _request(**{CF: STOREFRONT, "HTTP_X_CLIENT_IP": "203.0.113.7", "REMOTE_ADDR": "172.16.0.1"})
+    assert get_client_ip(request) == "203.0.113.7"
+    request = _request(**{CF: "8.8.8.8", "HTTP_X_CLIENT_IP": "203.0.113.7"})
+    assert get_client_ip(request) == "8.8.8.8"
+
+
+def test_malformed_trusted_entry_raises(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = ["nonsense"]
+    with pytest.raises(ImproperlyConfigured):
+        get_client_ip(_request(REMOTE_ADDR=STOREFRONT))
+
+
+def test_ipv4_mapped_edge_matches_ipv4_entry(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = ["15.235.117.158", "10.0.0.0/8"]
+    request = _request(REMOTE_ADDR="::ffff:15.235.117.158", HTTP_X_CLIENT_IP="203.0.113.7")
+    assert get_client_ip(request) == "203.0.113.7"
+    request = _request(REMOTE_ADDR="::ffff:10.1.2.3", HTTP_X_CLIENT_IP="203.0.113.7")
+    assert get_client_ip(request) == "203.0.113.7"
+
+
+def test_ipv4_mapped_forwarded_value_is_normalised(settings):
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT]
+    request = _request(REMOTE_ADDR=STOREFRONT, HTTP_X_CLIENT_IP="::ffff:203.0.113.7")
+    assert get_client_ip(request) == "203.0.113.7"
+
+
+def test_trusted_proxies_parsed_once(settings, monkeypatch):
+    from django_utils.api import client_ip
+
+    client_ip._parse_networks.cache_clear()
+    calls = []
+    real = client_ip.ipaddress.ip_network
+    monkeypatch.setattr(client_ip.ipaddress, "ip_network", lambda *a, **k: calls.append(a) or real(*a, **k))
+    settings.CLIENT_IP_TRUSTED_PROXIES = [STOREFRONT, "10.2.0.0/16"]
+    for _ in range(3):
+        get_client_ip(_request(REMOTE_ADDR=STOREFRONT))
+    assert len(calls) == 2
+    settings.CLIENT_IP_TRUSTED_PROXIES = ["10.3.0.0/16"]
+    assert get_client_ip(_request(REMOTE_ADDR=STOREFRONT, HTTP_X_CLIENT_IP="1.1.1.1")) == STOREFRONT
