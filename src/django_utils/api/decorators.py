@@ -6,8 +6,9 @@ import ipaddress
 import logging
 from functools import partial, wraps
 
+from django.conf import settings as settings_django
 from django.contrib import auth
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django_regional.models import Country
 from webargs.djangoparser import use_args
@@ -169,19 +170,25 @@ def save_ip_and_country(view_func):
     return _wrapped_view
 
 
+def _captcha_unavailable(view_func, reason: str):
+    if getattr(settings_django, "CAPTCHA_REQUIRED", False):
+        raise ImproperlyConfigured(
+            f"CAPTCHA_REQUIRED is set but {reason}: {view_func.__module__}.{view_func.__qualname__}"
+        )
+    logger.warning(
+        "verify_captcha: %s, %s.%s runs without captcha", reason, view_func.__module__, view_func.__qualname__
+    )
+    return view_func
+
+
 def verify_captcha(view_func):
     # RuntimeError: an app that is installed but not in INSTALLED_APPS raises it on model import, not ImportError.
     try:
         from django_captcha.output.decorators import verify_recaptcha
     except ImportError:
-        return view_func
+        return _captcha_unavailable(view_func, "django_captcha is not installed")
     except RuntimeError:
-        logger.warning(
-            "verify_captcha: django_captcha is installed but not in INSTALLED_APPS, %s.%s runs without captcha",
-            view_func.__module__,
-            view_func.__qualname__,
-        )
-        return view_func
+        return _captcha_unavailable(view_func, "django_captcha is installed but not in INSTALLED_APPS")
 
     return verify_recaptcha(view_func)
 

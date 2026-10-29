@@ -57,5 +57,5 @@ Utility library — no concrete models, no migrations (abstract bases only).
 - Never log request bodies or the key: the httpx event hook logs method, URL and redacted headers at DEBUG.
 - Response-mapped errors carry `default_message` of their class; the toolbox text is on `upstream_message`
   (may quote model output) — never log it, never put it in a response.
-- `verify_captcha` runs the view without captcha when `django_captcha` is absent; installed but not in
+- `verify_captcha` runs the view without captcha (warning logged) when `django_captcha` is absent; `CAPTCHA_REQUIRED=True` makes it raise `ImproperlyConfigured`. Installed but not in
   `INSTALLED_APPS` it does the same and logs one warning per decorated view at import time.
