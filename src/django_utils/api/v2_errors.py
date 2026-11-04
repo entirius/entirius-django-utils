@@ -158,7 +158,10 @@ def v2_exception_handler(exc, context):
 
         logger.warning("v2 API error [%s] %s: %s (debug_id=%s)", status_code, error_code, exc, debug_id)
 
-        return Response(error_response.model_dump(), status=status_code, exception=True)
+        # Reuse DRF's response: its status and headers (WWW-Authenticate, Retry-After) stand, only the body changes.
+        handled.data = error_response.model_dump()
+        handled.exception = True
+        return handled
 
     # Unhandled exception — 500, no details leaked
     logger.exception("Unhandled v2 API error (debug_id=%s): %s", debug_id, exc)
