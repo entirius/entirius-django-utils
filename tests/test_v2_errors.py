@@ -13,6 +13,7 @@ from rest_framework.exceptions import APIException, NotFound, Throttled, Validat
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory
+from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as drf_exception_handler
 
@@ -144,6 +145,20 @@ class _SessionAuthView(_BasicAuthView):
     authentication_classes = [SessionAuthentication]
 
 
+class _SlowDown(BaseThrottle):
+    def allow_request(self, request, view):
+        return False
+
+    def wait(self):
+        return 2.3
+
+
+class _ThrottledView(_BasicAuthView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = [_SlowDown]
+
+
 def _get(view, **headers):
     return view.as_view()(APIRequestFactory().get(V2_PATH, **headers))
 
@@ -160,6 +175,7 @@ def test_failed_authentication_keeps_www_authenticate():
     response = _get(_BasicAuthView, HTTP_AUTHORIZATION="Basic not-base64!")
 
     assert response.status_code == 401
+    assert response.data["error"] == "AUTHENTICATION_REQUIRED"
     assert response["WWW-Authenticate"] == 'Basic realm="api"'
 
 
@@ -171,12 +187,12 @@ def test_authenticator_without_header_stays_a_403():
 
 
 def test_throttled_keeps_drf_retry_after():
-    exc = Throttled(wait=2.3)
-
-    response = _v2(exc)
+    response = _get(_ThrottledView)
 
     assert response.status_code == 429
-    assert response["Retry-After"] == drf_exception_handler(exc, _context(V2_PATH))["Retry-After"] == "3"
+    assert response.data["error"] == "RATE_LIMITED"
+    drf_response = drf_exception_handler(Throttled(wait=2.3), _context(V2_PATH))
+    assert response["Retry-After"] == drf_response["Retry-After"] == "3"
 
 
 def test_throttled_without_wait_has_no_retry_after():
