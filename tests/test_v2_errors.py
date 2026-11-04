@@ -8,8 +8,13 @@ import pytest
 from django.http import Http404
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
-from rest_framework.exceptions import APIException, NotFound, ValidationError
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
+from rest_framework.exceptions import APIException, NotFound, Throttled, ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory
+from rest_framework.views import APIView
+from rest_framework.views import exception_handler as drf_exception_handler
 
 from django_utils.api.v2_errors import make_exception_handler, raise_pydantic_as_drf
 
@@ -113,3 +118,76 @@ def test_issue12_query_schema_reports_location_query():
     assert response.data["error"] == "VALIDATION_ERROR"
     assert response.data["details"][0]["field"] == "current"
     assert [d["location"] for d in response.data["details"]] == ["query"]
+
+
+# --- Headers DRF sets on the error response (WWW-Authenticate, Retry-After) ---
+
+V2_PATH = "/api/thing/v2/x/"
+
+
+class _BasicAuthView(APIView):
+    """First authenticator has authenticate_header: DRF answers 401 with WWW-Authenticate."""
+
+    authentication_classes = [BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_exception_handler(self):
+        return make_exception_handler()
+
+    def get(self, request):
+        return Response({})
+
+
+class _SessionAuthView(_BasicAuthView):
+    """First authenticator has no authenticate_header: DRF turns the 401 into a 403."""
+
+    authentication_classes = [SessionAuthentication]
+
+
+def _get(view, **headers):
+    return view.as_view()(APIRequestFactory().get(V2_PATH, **headers))
+
+
+def test_missing_credentials_keep_www_authenticate():
+    response = _get(_BasicAuthView)
+
+    assert response.status_code == 401
+    assert response.data["error"] == "AUTHENTICATION_REQUIRED"
+    assert response["WWW-Authenticate"] == 'Basic realm="api"'
+
+
+def test_failed_authentication_keeps_www_authenticate():
+    response = _get(_BasicAuthView, HTTP_AUTHORIZATION="Basic not-base64!")
+
+    assert response.status_code == 401
+    assert response["WWW-Authenticate"] == 'Basic realm="api"'
+
+
+def test_authenticator_without_header_stays_a_403():
+    response = _get(_SessionAuthView)
+
+    assert response.status_code == 403
+    assert "WWW-Authenticate" not in response
+
+
+def test_throttled_keeps_drf_retry_after():
+    exc = Throttled(wait=2.3)
+
+    response = _v2(exc)
+
+    assert response.status_code == 429
+    assert response["Retry-After"] == drf_exception_handler(exc, _context(V2_PATH))["Retry-After"] == "3"
+
+
+def test_throttled_without_wait_has_no_retry_after():
+    response = _v2(Throttled())
+
+    assert response.status_code == 429
+    assert "Retry-After" not in response
+
+
+def test_validation_error_adds_no_headers():
+    response = _v2(ValidationError({"sku": ["This field is required."]}))
+
+    assert response.status_code == 400
+    assert set(response.headers) == set(Response().headers)
